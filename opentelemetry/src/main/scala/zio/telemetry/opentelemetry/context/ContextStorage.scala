@@ -95,6 +95,18 @@ private[opentelemetry] object ContextStorage {
         .map(new ZIOFiberRef(_))
     )
 
+  val nativeBridge: ULayer[ContextStorage] = {
+    val threadLocal = new ThreadLocal[Option[Context]] {
+      override def initialValue() = None
+    }
+
+    ThreadLocalBridge.live >>> ZLayer.scoped(
+      ThreadLocalBridge
+        .makeFiberRef[Context](Context.root())(a => threadLocal.set(Some(a)))
+        .map(new ZIOFiberRef(_))
+    )
+  }
+
   /**
    * Uses OpenTelemetry's context storage which is backed by a [[java.lang.ThreadLocal]]. This makes sense only if
    * [[https://github.com/open-telemetry/opentelemetry-java-instrumentation OTEL instrumentation agent]] is used.
